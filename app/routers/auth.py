@@ -4,7 +4,9 @@ from datetime import datetime ,timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,delete
 import random
-import smtplib
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from starlette.concurrency import run_in_threadpool
 import jwt
 from email.message import EmailMessage
 from ..models import User,Documnet,Otp_store
@@ -35,18 +37,30 @@ async def sendOtp(data:OTPDATA,session:AsyncSession=Depends(get_db)):
     gen_otp = random.randint(10000,99999)
     SENDER = setting.Sender_email
 
-    message = EmailMessage()
-    message["Subject"] = "Your DocuAI OTP"
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key["api-key"] = setting.BREVO_API_KEY
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+        sib_api_v3_sdk.ApiClient(configuration)
+    )
+
+    email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": data.email}],
+        sender = {"name":"DocAI", "email":SENDER},
+        subject="Your DocAI OTP",
+        text_content = (f"Your OTP is :{gen_otp}. This OTP is valid for 5 minutes.")
+
+    )
+
 
     
+    try:
+        await run_in_threadpool(api_instance.send_transac_email,email)
+    except Exception as e:
+        print("Resend email error:",str(e))
+        raise HTTPException(status_code=500,detail="Unable to send OTP email")
 
-    message["from"] = SENDER
-    message["to"] = data.email
-    message.set_content(f"Your OTP is: {gen_otp}.\n This OTP is valid for 5 minutes. ")
-    with smtplib.SMTP_SSL("smtp.gmail.com",465) as server:
-        server.login(SENDER,setting.SENDER_PASSWORD)
-        server.send_message(message)
-
+   
 
     userOtpstore = Otp_store(email=data.email,otp=str(gen_otp),expires_at=datetime.now()+ timedelta(minutes=5))
 

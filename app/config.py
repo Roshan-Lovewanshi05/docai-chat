@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://ecom:ecom@localhost:5432/ecom"     # async (FastAPI)
     # sync_database_url: str = "postgresql+psycopg://ecom:ecom@localhost:5432/ecom" 
 
-    SENDER_PASSWORD:str=""
+    # SENDER_PASSWORD:str=""
+    BREVO_API_KEY : str=""
+    # RESEND_API_KEY:str=""
     Sender_email:str=""
        #-----Api keys---
     GROQ_API_KEY:str=""
